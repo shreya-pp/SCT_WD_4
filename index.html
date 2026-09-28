@@ -1,0 +1,626 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b0c16">
+  <title>Daymark · Task manager</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --paper: #0b0c16;
+      --surface: #171826;
+      --surface-raised: #202338;
+      --ink: #edf3ff;
+      --muted: #9ba9c2;
+      --line: #30364d;
+      --sky: #72d2f5;
+      --blue-deep: #438fd1;
+      --blue-wash: #1d2b47;
+      --violet: #b39aff;
+      --shadow: 0 18px 60px rgb(0 0 0 / 45%);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      background: linear-gradient(125deg, #0a0b13 0%, #11101f 34%, #11192b 72%, #0b0d18 100%);
+      color: var(--ink);
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      font-size: 14px;
+    }
+
+    button, input, select { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible, input:focus-visible, select:focus-visible {
+      outline: 3px solid #72d2f5;
+      outline-offset: 2px;
+    }
+
+    .app-shell {
+      display: grid;
+      grid-template-columns: 244px minmax(0, 1fr);
+      min-height: 100vh;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      padding: 30px 18px 22px;
+      border-right: 1px solid var(--line);
+      background: linear-gradient(180deg, #171626 0%, #141725 58%, #101522 100%);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 0 10px;
+      margin-bottom: 42px;
+      font-family: Georgia, serif;
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .brand-mark {
+      display: grid;
+      width: 34px;
+      height: 34px;
+      place-items: center;
+      border-radius: 10px;
+      background: #61c8f2;
+      color: #081321;
+      box-shadow: 0 0 24px rgb(79 190 250 / 38%), 0 5px 16px rgb(0 0 0 / 35%);
+    }
+
+    .brand-mark svg { width: 19px; height: 19px; }
+    .nav-label { padding: 0 11px; margin: 0 0 9px; color: var(--muted); font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .nav-group { display: grid; gap: 4px; }
+
+    .nav-item {
+      display: flex;
+      min-height: 40px;
+      align-items: center;
+      gap: 11px;
+      padding: 0 11px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: #bdc8dd;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .nav-item:hover { background: #20243a; }
+    .nav-item.active { background: #1d2b47; color: #e0f5ff; font-weight: 700; box-shadow: inset 2px 0 #72d2f5, 0 0 18px rgb(92 169 244 / 12%); }
+    .nav-item svg { width: 16px; height: 16px; flex: 0 0 auto; padding: 3px; box-sizing: content-box; border-radius: 6px; }
+    #view-nav .nav-item:nth-child(1) svg { color: #72d2f5; background: #1b3147; }
+    #view-nav .nav-item:nth-child(2) svg { color: #a9dcff; background: #202c48; }
+    #view-nav .nav-item:nth-child(3) svg { color: #a6b6ff; background: #252844; }
+    #view-nav .nav-item:nth-child(4) svg { color: #b39aff; background: #302747; }
+    #custom-lists .nav-item:nth-child(1) svg { color: #82cff5; background: #1a3045; }
+    #custom-lists .nav-item:nth-child(2) svg { color: #a99cff; background: #2c2848; }
+    #custom-lists .nav-item:nth-child(3) svg { color: #8cafff; background: #202b47; }
+    .nav-item .count { margin-left: auto; color: #8493b0; font-size: 12px; }
+    .nav-divider { height: 1px; margin: 25px 10px 21px; background: var(--line); }
+    .list-heading { display: flex; align-items: center; justify-content: space-between; padding: 0 10px; margin: 0 0 10px; }
+    .list-heading .nav-label { padding: 0; margin: 0; }
+
+    .icon-button {
+      display: inline-grid;
+      width: 32px;
+      height: 32px;
+      flex: 0 0 auto;
+      place-items: center;
+      border: 0;
+      border-radius: 5px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .icon-button:hover { background: #222940; color: #8bdcff; }
+    .icon-button svg { width: 17px; height: 17px; }
+
+    .list-maker { display: none; gap: 6px; padding: 0 4px; margin-bottom: 8px; }
+    .list-maker.open { display: flex; }
+    .list-maker input { width: 100%; min-width: 0; padding: 8px 9px; border: 1px solid #3c4665; border-radius: 5px; background: var(--surface); color: var(--ink); }
+    .list-maker button { width: 34px; border: 0; border-radius: 5px; background: var(--sky); color: #081321; cursor: pointer; }
+    .sidebar-foot { margin-top: auto; padding: 17px 10px 0; color: #7787a4; font-size: 12px; }
+
+    main { min-width: 0; padding: 39px clamp(24px, 6vw, 92px) 60px; }
+    .main-inner { width: min(100%, 850px); margin: 0 auto; }
+    .topline { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 31px; }
+    .date-kicker { color: var(--muted); font-size: 13px; }
+    .top-actions { display: flex; align-items: center; gap: 10px; }
+
+    .search-wrap { position: relative; }
+    .search-wrap svg { position: absolute; top: 10px; left: 11px; width: 16px; height: 16px; color: #8498c2; pointer-events: none; }
+    .search-input { width: 210px; height: 37px; padding: 0 12px 0 35px; border: 1px solid #343c57; border-radius: 5px; background: #111522; color: var(--ink); }
+
+    .heading-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; margin-bottom: 24px; }
+    .heading-copy { min-width: 0; }
+    h1 { margin: 0 0 7px; font-family: Georgia, "Times New Roman", serif; font-size: clamp(31px, 4vw, 42px); font-weight: 500; line-height: 1.1; }
+    .subtitle { margin: 0; color: var(--muted); }
+
+    .primary-button {
+      display: inline-flex;
+      min-height: 40px;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 15px;
+      border: 0;
+      border-radius: 5px;
+      background: var(--sky);
+      color: #081321;
+      font-weight: 700;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .primary-button { color: #081321; box-shadow: 0 0 26px rgb(83 190 255 / 28%), 0 5px 18px rgb(0 0 0 / 35%); }
+    .primary-button:hover { background: var(--blue-deep); color: #f3f8ff; }
+    .primary-button svg { width: 16px; height: 16px; }
+
+    .progress-row { display: flex; align-items: center; gap: 12px; padding: 15px 0 21px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+    .progress-track { width: 120px; height: 5px; overflow: hidden; border-radius: 8px; background: #30364d; }
+    .progress-fill { width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #72d2f5, #8c8cff); box-shadow: 0 0 12px rgb(96 181 255 / 70%); transition: width 180ms ease; }
+    .progress-count { margin-left: auto; }
+
+    .task-list { padding: 0; margin: 7px 0 0; list-style: none; }
+    .task-row {
+      display: grid;
+      grid-template-columns: 23px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 13px;
+      min-height: 69px;
+      padding: 11px 5px;
+      border-bottom: 1px solid var(--line);
+      animation: arrive 220ms ease both;
+    }
+
+    @keyframes arrive { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    .task-check { width: 19px; height: 19px; margin: 0; accent-color: var(--sky); cursor: pointer; }
+    .task-content { min-width: 0; }
+    .task-title { overflow-wrap: anywhere; font-size: 15px; line-height: 1.4; }
+    .task-row.completed .task-title { color: #79849b; text-decoration: line-through; }
+    .task-meta { display: flex; flex-wrap: wrap; gap: 7px 12px; margin-top: 5px; color: var(--muted); font-size: 11px; }
+    .task-meta span { display: inline-flex; align-items: center; gap: 4px; }
+    .task-meta svg { width: 13px; height: 13px; }
+    .task-meta .overdue { color: var(--violet); }
+    .task-actions { display: flex; gap: 2px; opacity: 0; transition: opacity 120ms ease; }
+    .task-row:hover .task-actions, .task-row:focus-within .task-actions { opacity: 1; }
+    .task-actions .icon-button { width: 30px; height: 30px; }
+    .task-actions .edit-task:hover { color: #72d2f5; }
+    .task-actions .delete-task:hover { color: #c2aaff; }
+    .task-meta span:nth-child(1) svg { color: #82cff5; }
+    .task-meta span:nth-child(2) svg { color: #a99cff; }
+    .task-meta span:nth-child(3) svg { color: #8cafff; }
+
+    .empty-state { padding: 57px 16px 79px; color: var(--muted); text-align: center; }
+    .empty-state .empty-mark { display: grid; width: 88px; height: 88px; place-items: center; margin: 0 auto 16px; color: var(--sky); }
+    .empty-mark svg { width: 88px; height: 88px; filter: drop-shadow(0 10px 22px rgb(0 0 0 / 22%)); }
+    .empty-state h2 { margin: 0 0 7px; color: var(--ink); font-family: Georgia, serif; font-size: 21px; font-weight: 500; }
+    .empty-state p { margin: 0; }
+
+    dialog {
+      width: min(430px, calc(100% - 32px));
+      padding: 0;
+      border: 1px solid #3b4261;
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--ink);
+      box-shadow: var(--shadow);
+    }
+
+    dialog::backdrop { background: rgb(5 7 18 / 76%); backdrop-filter: blur(3px); }
+    .dialog-form { padding: 25px; }
+    .dialog-title { margin: 0 0 22px; font-family: Georgia, serif; font-size: 25px; font-weight: 500; }
+    .field { display: grid; gap: 7px; margin-bottom: 16px; }
+    .field label { color: #b8c9e4; font-size: 12px; font-weight: 700; }
+    .field input, .field select { width: 100%; height: 40px; padding: 0 10px; border: 1px solid #3b4261; border-radius: 4px; background: #101321; color: var(--ink); }
+    .date-time-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px; }
+    .secondary-button { min-height: 38px; padding: 0 13px; border: 1px solid #3b4261; border-radius: 5px; background: transparent; color: #d6e1f8; cursor: pointer; }
+    .secondary-button:hover { background: #20243a; }
+
+    @media (max-width: 720px) {
+      .app-shell { grid-template-columns: minmax(0, 1fr); }
+      .sidebar { min-width: 0; padding: 15px 16px 12px; border-right: 0; border-bottom: 1px solid var(--line); }
+      .brand { margin: 0 0 14px; font-size: 20px; }
+      .sidebar nav { display: flex; min-width: 0; overflow-x: auto; gap: 4px; padding-bottom: 2px; }
+      .nav-group { display: flex; flex: 0 0 auto; gap: 4px; }
+      .nav-label, .nav-divider, .sidebar-foot { display: none !important; }
+      .sidebar section { display: flex; min-width: 0; align-items: center; gap: 7px; margin-top: 5px; overflow-x: auto; }
+      .list-heading { display: flex; flex: 0 0 auto; align-items: center; gap: 2px; padding: 0; margin: 0; }
+      .list-heading .nav-label { display: block; font-size: 10px; }
+      .list-heading .icon-button { width: 29px; height: 29px; }
+      .list-maker.open { display: flex; flex: 0 0 150px; padding: 0; margin: 0; }
+      .nav-item { min-height: 36px; padding: 0 10px; white-space: nowrap; }
+      .nav-item .count { display: none; }
+      main { padding: 25px 19px 40px; }
+      .topline { margin-bottom: 26px; }
+      .search-input { width: min(42vw, 190px); }
+      .task-actions { opacity: 1; }
+    }
+
+    @media (max-width: 440px) {
+      .topline { align-items: flex-start; flex-direction: column; }
+      .top-actions, .search-wrap, .search-input { width: 100%; }
+      .top-actions { justify-content: flex-end; }
+      .heading-row { align-items: flex-start; }
+      .primary-button { min-height: 38px; padding: 0 10px; }
+      .task-row { grid-template-columns: 21px minmax(0, 1fr) auto; gap: 9px; }
+      .task-actions .icon-button { width: 27px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Task navigation">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 4 4L19 6"/><path d="M21 12a9 9 0 1 1-3-6.7"/></svg></span>
+        <span>daymark</span>
+      </div>
+      <nav aria-label="Views">
+        <p class="nav-label">Workspace</p>
+        <div class="nav-group" id="view-nav"></div>
+      </nav>
+      <div class="nav-divider"></div>
+      <section aria-label="Your lists">
+        <div class="list-heading">
+          <p class="nav-label">Your lists</p>
+          <button class="icon-button" id="add-list-toggle" type="button" aria-label="Add a list" title="Add a list"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg></button>
+        </div>
+        <form class="list-maker" id="list-form">
+          <input id="list-name" aria-label="New list name" placeholder="List name" maxlength="32" required>
+          <button aria-label="Create list" type="submit">+</button>
+        </form>
+        <div class="nav-group" id="custom-lists"></div>
+      </section>
+      <div class="sidebar-foot">Your tasks stay on this device.</div>
+    </aside>
+
+    <main>
+      <div class="main-inner">
+        <div class="topline">
+          <div class="date-kicker" id="today-label"></div>
+          <div class="top-actions">
+            <label class="search-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4 4"/></svg>
+              <input class="search-input" id="search" type="search" placeholder="Find a task" aria-label="Search tasks">
+            </label>
+          </div>
+        </div>
+        <section aria-labelledby="view-title">
+          <div class="heading-row">
+            <div class="heading-copy">
+              <h1 id="view-title">All tasks</h1>
+              <p class="subtitle" id="view-subtitle"></p>
+            </div>
+            <button class="primary-button" id="new-task" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+              <span>New task</span>
+            </button>
+          </div>
+          <div class="progress-row" aria-label="Task completion progress">
+            <span>Progress</span>
+            <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+            <span id="progress-label">0% complete</span>
+            <span class="progress-count" id="progress-count"></span>
+          </div>
+          <ul class="task-list" id="task-list"></ul>
+          <div class="empty-state" id="empty-state" hidden>
+            <div class="empty-mark" aria-hidden="true"><svg viewBox="0 0 96 96" fill="none">
+              <path d="M18 18.5A8.5 8.5 0 0 1 26.5 10h43a8.5 8.5 0 0 1 8.5 8.5v55a8.5 8.5 0 0 1-8.5 8.5h-43a8.5 8.5 0 0 1-8.5-8.5z" fill="#20263b" stroke="#536c99" stroke-width="2"/>
+              <circle cx="31" cy="32" r="5" fill="#72d2f5"/><path d="M43 32h21" stroke="#deebff" stroke-width="3" stroke-linecap="round"/>
+              <circle cx="31" cy="49" r="5" fill="#a99cff"/><path d="m29 49 1.5 1.5L34 47" stroke="#17182b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M43 49h17" stroke="#b1c7eb" stroke-width="3" stroke-linecap="round"/>
+              <circle cx="31" cy="66" r="5" fill="#8cafff"/><path d="M43 66h21" stroke="#b1c7eb" stroke-width="3" stroke-linecap="round"/>
+              <path d="m76 12 2.5 6 6 2.5-6 2.5-2.5 6-2.5-6-6-2.5 6-2.5z" fill="#b39aff"/><circle cx="17" cy="78" r="4" fill="#72d2f5"/>
+            </svg></div>
+            <h2 id="empty-title">A little room to breathe</h2>
+            <p id="empty-copy">Add a task whenever you’re ready.</p>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <dialog id="task-dialog" aria-labelledby="dialog-title">
+    <form class="dialog-form" id="task-form">
+      <h2 class="dialog-title" id="dialog-title">New task</h2>
+      <div class="field">
+        <label for="task-title-input">Task</label>
+        <input id="task-title-input" name="title" type="text" maxlength="140" placeholder="What needs doing?" required>
+      </div>
+      <div class="field">
+        <label for="task-list-input">List</label>
+        <select id="task-list-input" name="list" required></select>
+      </div>
+      <div class="date-time-fields">
+        <div class="field">
+          <label for="task-date-input">Date</label>
+          <input id="task-date-input" name="date" type="date">
+        </div>
+        <div class="field">
+          <label for="task-time-input">Time</label>
+          <input id="task-time-input" name="time" type="time">
+        </div>
+      </div>
+      <div class="dialog-actions">
+        <button class="secondary-button" id="cancel-task" type="button">Cancel</button>
+        <button class="primary-button" id="save-task" type="submit">Add task</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script>
+    (() => {
+      const STORAGE_KEY = "daymark.tasks.v1";
+      const defaultState = {
+        lists: [
+          { id: "personal", name: "Personal" },
+          { id: "work", name: "Work" },
+          { id: "ideas", name: "Ideas" }
+        ],
+        tasks: []
+      };
+      const views = [
+        { id: "all", label: "All tasks", icon: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>' },
+        { id: "today", label: "Today", icon: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>' },
+        { id: "upcoming", label: "Upcoming", icon: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/>' },
+        { id: "completed", label: "Completed", icon: '<path d="m5 12 4 4L19 6"/><circle cx="12" cy="12" r="9"/>' }
+      ];
+      const icons = {
+        calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/>',
+        clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+        edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/>',
+        trash: '<path d="M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6m4 4v6m6-6v6"/>'
+      };
+
+      const $ = (selector) => document.querySelector(selector);
+      const elements = {
+        viewNav: $("#view-nav"), customLists: $("#custom-lists"), listForm: $("#list-form"), listName: $("#list-name"),
+        addListToggle: $("#add-list-toggle"), title: $("#view-title"), subtitle: $("#view-subtitle"), taskList: $("#task-list"),
+        empty: $("#empty-state"), emptyTitle: $("#empty-title"), emptyCopy: $("#empty-copy"), search: $("#search"),
+        dialog: $("#task-dialog"), form: $("#task-form"), taskTitle: $("#task-title-input"), taskListSelect: $("#task-list-input"),
+        taskDate: $("#task-date-input"), taskTime: $("#task-time-input"), dialogTitle: $("#dialog-title"), saveTask: $("#save-task")
+      };
+
+      let state = loadState();
+      let currentView = { type: "view", id: "all" };
+      let editingId = null;
+
+      function loadState() {
+        try {
+          const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
+          if (stored && Array.isArray(stored.lists) && Array.isArray(stored.tasks)) {
+            return {
+              lists: stored.lists.filter((list) => list && typeof list.id === "string" && typeof list.name === "string"),
+              tasks: stored.tasks.filter((task) => task && typeof task.id === "string" && typeof task.title === "string")
+            };
+          }
+        } catch {}
+        return structuredClone(defaultState);
+      }
+
+      function saveState() {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+        catch {}
+      }
+
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
+      }
+
+      function icon(paths) {
+        return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+      }
+
+      function localDateString(date = new Date()) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      }
+
+      function formatDate(dateString) {
+        const [year, month, day] = dateString.split("-").map(Number);
+        return new Date(year, month - 1, day).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+      }
+
+      function taskCountFor(view) {
+        const tasks = state.tasks;
+        if (view === "all") return tasks.filter((task) => !task.completed).length;
+        if (view === "today") return tasks.filter((task) => !task.completed && task.date === localDateString()).length;
+        if (view === "upcoming") return tasks.filter((task) => !task.completed && task.date > localDateString()).length;
+        return tasks.filter((task) => task.completed).length;
+      }
+
+      function renderNavigation() {
+        elements.viewNav.innerHTML = views.map((view) => `
+          <button class="nav-item ${currentView.type === "view" && currentView.id === view.id ? "active" : ""}" data-type="view" data-id="${view.id}" type="button" aria-current="${currentView.type === "view" && currentView.id === view.id ? "page" : "false"}">
+            ${icon(view.icon)}<span>${view.label}</span><span class="count">${taskCountFor(view.id)}</span>
+          </button>`).join("");
+
+        elements.customLists.innerHTML = state.lists.map((list) => {
+          const count = state.tasks.filter((task) => task.listId === list.id && !task.completed).length;
+          const active = currentView.type === "list" && currentView.id === list.id;
+          return `<button class="nav-item ${active ? "active" : ""}" data-type="list" data-id="${escapeHtml(list.id)}" type="button" aria-current="${active ? "page" : "false"}">
+            ${icon('<path d="M3 7h6l2 2h10v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/><path d="M3 7V5a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v2"/>')}<span>${escapeHtml(list.name)}</span><span class="count">${count}</span>
+          </button>`;
+        }).join("");
+      }
+
+      function visibleTasks() {
+        const today = localDateString();
+        let tasks = state.tasks.filter((task) => {
+          if (currentView.type === "list") return task.listId === currentView.id;
+          if (currentView.id === "today") return !task.completed && task.date === today;
+          if (currentView.id === "upcoming") return !task.completed && task.date > today;
+          if (currentView.id === "completed") return task.completed;
+          return true;
+        });
+        const query = elements.search.value.trim().toLocaleLowerCase();
+        if (query) tasks = tasks.filter((task) => task.title.toLocaleLowerCase().includes(query));
+        return tasks.sort((a, b) => {
+          if (a.completed !== b.completed) return Number(a.completed) - Number(b.completed);
+          const dateA = a.date || "9999-12-31";
+          const dateB = b.date || "9999-12-31";
+          return dateA.localeCompare(dateB) || (a.time || "23:59").localeCompare(b.time || "23:59") || a.createdAt - b.createdAt;
+        });
+      }
+
+      function currentHeading() {
+        if (currentView.type === "list") return state.lists.find((list) => list.id === currentView.id)?.name || "Your list";
+        return views.find((view) => view.id === currentView.id)?.label || "All tasks";
+      }
+
+      function renderTasks() {
+        const visible = visibleTasks();
+        const activeTasks = state.tasks.filter((task) => !task.completed);
+        const completedCount = state.tasks.filter((task) => task.completed).length;
+        const progress = state.tasks.length ? Math.round((completedCount / state.tasks.length) * 100) : 0;
+        const heading = currentHeading();
+        elements.title.textContent = heading;
+        elements.subtitle.textContent = `${visible.length} ${visible.length === 1 ? "task" : "tasks"}${elements.search.value.trim() ? " found" : ""}`;
+        $("#today-label").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+        $("#progress-fill").style.width = `${progress}%`;
+        $("#progress-label").textContent = `${progress}% complete`;
+        $("#progress-count").textContent = `${completedCount} of ${state.tasks.length} done`;
+        elements.taskList.innerHTML = visible.map((task) => {
+          const list = state.lists.find((item) => item.id === task.listId);
+          const overdue = task.date && task.date < localDateString() && !task.completed;
+          const dueDate = task.date ? `<span class="${overdue ? "overdue" : ""}">${icon(icons.calendar)}${overdue ? "Overdue · " : ""}${formatDate(task.date)}</span>` : "";
+          const dueTime = task.time ? `<span>${icon(icons.clock)}${escapeHtml(task.time)}</span>` : "";
+          const listLabel = list ? `<span>${icon('<path d="M3 7h6l2 2h10v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>')}${escapeHtml(list.name)}</span>` : "";
+          return `<li class="task-row ${task.completed ? "completed" : ""}" data-task-id="${escapeHtml(task.id)}">
+            <input class="task-check" type="checkbox" aria-label="Mark ${escapeHtml(task.title)} ${task.completed ? "incomplete" : "complete"}" ${task.completed ? "checked" : ""}>
+            <div class="task-content"><div class="task-title">${escapeHtml(task.title)}</div><div class="task-meta">${listLabel}${dueDate}${dueTime}</div></div>
+            <div class="task-actions">
+              <button class="icon-button edit-task" type="button" aria-label="Edit ${escapeHtml(task.title)}" title="Edit task">${icon(icons.edit)}</button>
+              <button class="icon-button delete-task" type="button" aria-label="Delete ${escapeHtml(task.title)}" title="Delete task">${icon(icons.trash)}</button>
+            </div>
+          </li>`;
+        }).join("");
+        elements.empty.hidden = visible.length > 0;
+        elements.emptyTitle.textContent = elements.search.value.trim() ? "No tasks match" : currentView.id === "completed" ? "Nothing checked off yet" : "A little room to breathe";
+        elements.emptyCopy.textContent = elements.search.value.trim() ? "Try another search." : currentView.id === "completed" ? "Completed tasks will be collected here." : "Add a task whenever you’re ready.";
+        renderNavigation();
+        elements.taskList.dataset.activeTasks = String(activeTasks.length);
+      }
+
+      function renderListOptions(selectedId) {
+        elements.taskListSelect.innerHTML = state.lists.map((list) => `<option value="${escapeHtml(list.id)}">${escapeHtml(list.name)}</option>`).join("");
+        if (selectedId && state.lists.some((list) => list.id === selectedId)) elements.taskListSelect.value = selectedId;
+      }
+
+      function openTaskDialog(task) {
+        editingId = task?.id || null;
+        elements.form.reset();
+        renderListOptions(task?.listId || (currentView.type === "list" ? currentView.id : state.lists[0]?.id));
+        elements.taskTitle.value = task?.title || "";
+        elements.taskDate.value = task?.date || "";
+        elements.taskTime.value = task?.time || "";
+        elements.dialogTitle.textContent = task ? "Edit task" : "New task";
+        elements.saveTask.textContent = task ? "Save changes" : "Add task";
+        elements.dialog.showModal();
+        elements.taskTitle.focus();
+      }
+
+      elements.viewNav.addEventListener("click", (event) => {
+        const button = event.target.closest("button[data-id]");
+        if (!button) return;
+        currentView = { type: "view", id: button.dataset.id };
+        renderTasks();
+      });
+
+      elements.customLists.addEventListener("click", (event) => {
+        const button = event.target.closest("button[data-id]");
+        if (!button) return;
+        currentView = { type: "list", id: button.dataset.id };
+        renderTasks();
+      });
+
+      elements.addListToggle.addEventListener("click", () => {
+        elements.listForm.classList.toggle("open");
+        if (elements.listForm.classList.contains("open")) elements.listName.focus();
+      });
+
+      elements.listForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const name = elements.listName.value.trim();
+        if (!name || state.lists.some((list) => list.name.toLocaleLowerCase() === name.toLocaleLowerCase())) return;
+        const list = { id: crypto.randomUUID(), name };
+        state.lists.push(list);
+        currentView = { type: "list", id: list.id };
+        elements.listName.value = "";
+        elements.listForm.classList.remove("open");
+        saveState();
+        renderTasks();
+      });
+
+      $("#new-task").addEventListener("click", () => openTaskDialog());
+      $("#cancel-task").addEventListener("click", () => elements.dialog.close());
+      elements.dialog.addEventListener("click", (event) => {
+        if (event.target === elements.dialog) elements.dialog.close();
+      });
+
+      elements.form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const title = elements.taskTitle.value.trim();
+        if (!title || !state.lists.some((list) => list.id === elements.taskListSelect.value)) return;
+        const fields = new FormData(elements.form);
+        if (editingId) {
+          const task = state.tasks.find((item) => item.id === editingId);
+          if (task) Object.assign(task, { title, listId: fields.get("list"), date: fields.get("date"), time: fields.get("time") });
+        } else {
+          state.tasks.push({
+            id: crypto.randomUUID(), title, listId: fields.get("list"), date: fields.get("date"), time: fields.get("time"),
+            completed: false, createdAt: Date.now()
+          });
+        }
+        saveState();
+        elements.dialog.close();
+        renderTasks();
+      });
+
+      elements.taskList.addEventListener("change", (event) => {
+        if (!event.target.matches(".task-check")) return;
+        const task = state.tasks.find((item) => item.id === event.target.closest("[data-task-id]").dataset.taskId);
+        if (task) {
+          task.completed = event.target.checked;
+          saveState();
+          renderTasks();
+        }
+      });
+
+      elements.taskList.addEventListener("click", (event) => {
+        const row = event.target.closest("[data-task-id]");
+        if (!row) return;
+        const task = state.tasks.find((item) => item.id === row.dataset.taskId);
+        if (!task) return;
+        if (event.target.closest(".edit-task")) openTaskDialog(task);
+        if (event.target.closest(".delete-task")) {
+          state.tasks = state.tasks.filter((item) => item.id !== task.id);
+          saveState();
+          renderTasks();
+        }
+      });
+
+      elements.search.addEventListener("input", renderTasks);
+      renderTasks();
+    })();
+  </script>
+</body>
+</html>
