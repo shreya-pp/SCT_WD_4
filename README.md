@@ -6,7 +6,7 @@ Daymark is a responsive, dark-themed task manager for organizing personal and wo
 
 https://shreya-pp.github.io/SCT_WD_4/
 
-The site is published from the repository's `master` branch using GitHub Pages. The first deployment becomes available after the Pages workflow completes successfully.
+The site is published from the repository's `main` branch using GitHub Pages. The first deployment becomes available after the Pages workflow completes successfully.
 
 ## Features
 
@@ -37,4 +37,4 @@ Daymark stores tasks in the browser using `localStorage`. Data is not synced to 
 
 ## Deployment
 
-The workflow in `.github/workflows/pages.yml` deploys `index.html` to GitHub Pages when changes are pushed to `master`, or when the workflow is started manually from GitHub Actions. Repository Pages publishing is configured by the workflow.
+The workflow in `.github/workflows/pages.yml` deploys `index.html` to GitHub Pages when changes are pushed to `main`, or when the workflow is started manually from GitHub Actions. Repository Pages publishing is configured by the workflow.
